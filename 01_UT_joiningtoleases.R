@@ -60,16 +60,25 @@ lands_nominated <- lands_nominated %>%
 lands_nominated %>% 
   select(ld_summary)
 
+lands_nominated <- lands_nominated %>% 
+  mutate(
+    ld_township = str_sub(ld_summary, 5L, 9L),
+    ld_range = str_sub(ld_summary, 12L, 16L),
+    ld_section = str_sub(ld_summary, 41L, 43L)
+  ) 
 
 
 
 
 
-#### MAPPING ####
 
-#map out just a portion of sections 
-ut_section_13 <- ut_firstdivisions_geo %>% 
-  filter(FRSTDIVNO == 13)
-
-tm_shape(ut_section_13) +
-  tm_polygons()
+# 
+# 
+# #### MAPPING ####
+# 
+# #map out just a portion of sections 
+# ut_section_13 <- ut_firstdivisions_geo %>% 
+#   filter(FRSTDIVNO == 13)
+# 
+# tm_shape(ut_section_13) +
+#   tm_polygons()
