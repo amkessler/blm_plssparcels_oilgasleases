@@ -13,7 +13,7 @@ ut_firstdivisions_geo <- readRDS("geo_data/ut_firstdivisions_geo.rds")
 #examine the columns
 glimpse(ut_firstdivisions_geo)
 
-#for the purposes here - trying to figure out how to join to leases - we'll take out the geospatial stuff
+#for the initial purposes here - trying to figure out how to join to leases - we'll take out the geospatial stuff
 firstdivisions <- ut_firstdivisions_geo %>% 
   select(-SHAPE_Length, -SHAPE_Area)
 
@@ -66,7 +66,7 @@ lands_nominated %>%
 
 lands_nominated <- lands_nominated %>% 
   mutate(
-    ld_township = str_sub(ld_summary, 5L, 9L),
+    ld_township = str_sub(ld_summary, 5L, 9L), 
     ld_range = str_sub(ld_summary, 12L, 16L),
     ld_section = str_sub(ld_summary, 41L, 43L)
   ) 
@@ -87,13 +87,37 @@ str_length(firstdivisions$FRSTDIVID)
 #let's parse in a similar way to see if they may align with other table
 firstdivisions <- firstdivisions %>% 
   mutate(
-    ID_township = str_sub(FRSTDIVID, 3L, 9L),
+    ID_township = str_sub(FRSTDIVID, 5L, 9L), #let's hope this is correct, we're going to ignore the 26's altogether
     ID_range = str_sub(FRSTDIVID, 10L, 14L),
     ID_section = str_sub(FRSTDIVID, 18L, 20L)
   ) 
 
-firstdivisions
 
+#let's visually inspect the two tables' new columns
+firstdivisions %>% 
+  select(
+    FRSTDIVID, ID_township, ID_range, ID_section
+  )
+
+lands_nominated %>% 
+  select(
+    ld_summary, ld_township, ld_range, ld_section
+  ) 
+
+
+#### JOINING ####
+
+#the moment of truth, let's see if things can join successfully or not
+z <- inner_join(lands_nominated, firstdivisions, by = c("ld_township" = "ID_township",
+                                                        "ld_range" = "ID_range",
+                                                        "ld_section" = "ID_section"
+                                                        ))
+
+z
+
+#so this gives us about 50. Is that close to being right, with 600+ original land nomination records? Hmm.
+
+#are there duplicates in the land nominations, and what if we took them out?
 
 
 
