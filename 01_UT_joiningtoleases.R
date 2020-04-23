@@ -51,7 +51,14 @@ lands_nominated %>%
   tail(1)
 
 #let's take that out
+lands_nominated <- lands_nominated %>% 
+  mutate(
+    ld_summary = str_remove_all(ld_summary, "\\.")
+  )
 
+#great, now let's start parsing based on the location within the string
+lands_nominated %>% 
+  select(ld_summary)
 
 
 
