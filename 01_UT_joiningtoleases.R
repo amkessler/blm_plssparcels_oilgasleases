@@ -118,8 +118,77 @@ z
 #so this gives us about 50. Is that close to being right, with 600+ original land nomination records? Hmm.
 
 #are there duplicates in the land nominations, and what if we took them out?
+lands_nominated %>% 
+  count(status)
+
+lands_nominated %>% 
+  distinct(ld_township, ld_range, ld_section)
+
+#hmm that doesn't seem to be it.
+
+#let's try creating a different way of joining -- perhaps removing all the zeros in case they aren't
+#consistent across the two tables
+lands_nominated <- lands_nominated %>% 
+  mutate(
+    matchfield = paste0(ld_township, ld_range, ld_section),
+    matchfield = str_remove_all(matchfield, "0"),
+    matchfield = str_squish(matchfield)
+  ) %>% 
+  select(
+    matchfield, everything()
+  )
+
+lands_nominated
 
 
+firstdivisions <- firstdivisions %>% 
+  mutate(
+    matchfield = paste0(ID_township, ID_range, ID_section),
+    matchfield = str_remove_all(matchfield, "0"),
+    matchfield = str_squish(matchfield)
+  ) %>% 
+  select(
+    matchfield, everything()
+  )
+
+firstdivisions
+
+
+## ok, now let's see what happens when we try joining again
+zz <- inner_join(lands_nominated, firstdivisions, by = "matchfield")
+
+#whew! now we're talking, hopefully. Let's see what we've got here
+zz
+
+## which ones left out, if any?
+zz_not_joined <- anti_join(lands_nominated, firstdivisions, by = "matchfield")
+
+
+# With more than 900 results, appears we have multiple matches happening for a section,
+# likely because there are subdivisions in the records we've been ignoring.
+# Let's try to ferret them out so we've got one record per distinct section itself.
+zz %>% 
+  count(matchfield, sort = TRUE) %>% 
+  filter(n > 1)
+
+#we'll go back to create distinct versions of each table prior to joining
+lands_nominated_distinct <- lands_nominated %>% 
+  filter(status != "Duplicate") %>% 
+  distinct(matchfield, .keep_all = TRUE)
+
+firstdivisions %>% 
+  distinct(matchfield, .keep_all = TRUE)
+
+firstdivisions %>% 
+  count(matchfield, sort = TRUE)
+
+firstdivisions %>% 
+  filter(matchfield == "1S1W1") %>% 
+  View()
+
+
+## ok, now let's see what happens when we try joining again
+zz <- inner_join(lands_nominated, firstdivisions, by = "matchfield")
 
 
 
