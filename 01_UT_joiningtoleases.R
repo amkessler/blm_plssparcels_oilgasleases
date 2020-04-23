@@ -2,8 +2,6 @@ library(tidyverse)
 library(lubridate)
 library(janitor)
 library(sf)
-library(tmap)
-library(tmaptools)
 
 #load saved files of UT-only geospatial data created in step 00
 
@@ -126,12 +124,10 @@ lands_nominated %>%
 
 #hmm that doesn't seem to be it.
 
-#let's try creating a different way of joining -- perhaps removing all the zeros in case they aren't
-#consistent across the two tables
+#let's try creating a different way of joining -- creating one matchfield and clearing possible hidden whitespace
 lands_nominated <- lands_nominated %>% 
   mutate(
     matchfield = paste0(ld_township, ld_range, ld_section),
-    matchfield = str_remove_all(matchfield, "0"),
     matchfield = str_squish(matchfield)
   ) %>% 
   select(
@@ -144,7 +140,6 @@ lands_nominated
 firstdivisions <- firstdivisions %>% 
   mutate(
     matchfield = paste0(ID_township, ID_range, ID_section),
-    matchfield = str_remove_all(matchfield, "0"),
     matchfield = str_squish(matchfield)
   ) %>% 
   select(
@@ -157,49 +152,62 @@ firstdivisions
 ## ok, now let's see what happens when we try joining again
 zz <- inner_join(lands_nominated, firstdivisions, by = "matchfield")
 
-#whew! now we're talking, hopefully. Let's see what we've got here
+#well that didn't help, we got the same results
 zz
 
-## which ones left out, if any?
+## which ones left out
 zz_not_joined <- anti_join(lands_nominated, firstdivisions, by = "matchfield")
 
+#let's look at the lengths of the match strings
+str_length(lands_nominated$matchfield)
 
-# With more than 900 results, appears we have multiple matches happening for a section,
-# likely because there are subdivisions in the records we've been ignoring.
-# Let's try to ferret them out so we've got one record per distinct section itself.
-zz %>% 
-  count(matchfield, sort = TRUE) %>% 
-  filter(n > 1)
+test <- as_tibble(str_length(firstdivisions$matchfield))
+test %>% 
+  filter(value != 13)
+
+#Hmm, something else is amiss here.
+
+# Let's try to ferret out multiple matchfield records so we've got one record per distinct 
+# section itself. (Since there were multiple in there due to subdivisions we've ignored for this.)
 
 #we'll go back to create distinct versions of each table prior to joining
 lands_nominated_distinct <- lands_nominated %>% 
   filter(status != "Duplicate") %>% 
   distinct(matchfield, .keep_all = TRUE)
 
-firstdivisions %>% 
+firstdivisions_distinct <- firstdivisions %>% 
   distinct(matchfield, .keep_all = TRUE)
 
-firstdivisions %>% 
-  count(matchfield, sort = TRUE)
-
-firstdivisions %>% 
-  filter(matchfield == "1S1W1") %>% 
-  View()
-
-
 ## ok, now let's see what happens when we try joining again
-zz <- inner_join(lands_nominated, firstdivisions, by = "matchfield")
+zzz <- inner_join(lands_nominated_distinct, firstdivisions_distinct, by = "matchfield")
+
+#even less, which is perhaps to be expected. But shows us how many uniques are actually joining.
+
+# So something must be up here with the parsing not resulting in the same measures in the first place
+# for each table... townships, ranges, sections
 
 
+# before going deeper, what would happen if we looked at just to the range level? Left out sections.
+lands_nominated_rangedistinct <- lands_nominated %>% 
+  filter(status != "Duplicate") %>% 
+  distinct(ld_township, ld_range, .keep_all = TRUE)
 
+firstdivisions_rangedistinct <- firstdivisions %>% 
+  distinct(ID_township, ID_range, .keep_all = TRUE)
 
-# 
-# 
-# #### MAPPING ####
-# 
-# #map out just a portion of sections 
-# ut_section_13 <- ut_firstdivisions_geo %>% 
-#   filter(FRSTDIVNO == 13)
-# 
-# tm_shape(ut_section_13) +
-#   tm_polygons()
+#join
+joined_rangeonly <- inner_join(lands_nominated_rangedistinct, firstdivisions_rangedistinct,
+           by = c("ld_township" = "ID_township",
+                  "ld_range" = "ID_range"))
+
+#well ok now, maybe we're getting somewhere. All but one of the ranges nominated matched up!
+
+joined_rangeonly <- joined_rangeonly %>% 
+  select(-matchfield.x, -matchfield.y)
+
+joined_rangeonly
+
+# so something clearly going on with the **sections** that's causing the trouble...and perhaps it's worth
+# asking before going further if we should stick with just ranges overall for now. 
+# i.e. deal with sections later, but use ranges alone as the way to locate UT parcels at a higher level.
+
