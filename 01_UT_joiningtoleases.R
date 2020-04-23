@@ -19,8 +19,12 @@ firstdivisions <- ut_firstdivisions_geo %>%
 
 st_geometry(firstdivisions) <- NULL
 
+firstdivisions <- as_tibble(firstdivisions)
+
 #confirm they're gone
 glimpse(firstdivisions)
+
+
 
 
 ### Now import the oil/gas lease data of proposed parcels ####
@@ -66,6 +70,30 @@ lands_nominated <- lands_nominated %>%
     ld_range = str_sub(ld_summary, 12L, 16L),
     ld_section = str_sub(ld_summary, 41L, 43L)
   ) 
+
+
+
+#do something similar now for the geodata file ####
+
+#there are two id columns to potentially use
+firstdivisions %>% 
+  select(PLSSID, FRSTDIVID)
+
+#the longer one has the section, the shorter does not. we'll use the longer
+#let's look at the string lengths
+str_length(firstdivisions$FRSTDIVID)
+
+#good, they're all identical in their length
+#let's parse in a similar way to see if they may align with other table
+firstdivisions <- firstdivisions %>% 
+  mutate(
+    ID_township = str_sub(FRSTDIVID, 3L, 9L),
+    ID_range = str_sub(FRSTDIVID, 10L, 14L),
+    ID_section = str_sub(FRSTDIVID, 18L, 20L)
+  ) 
+
+firstdivisions
+
 
 
 
