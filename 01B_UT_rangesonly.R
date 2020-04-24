@@ -139,7 +139,7 @@ joined_geo_leases <- joined_geo_all %>%
 
 #create map using tmap
 #start with static map
-tmap_mode("plot")
+# tmap_mode("plot")
 
 tm_shape(joined_geo_leases) +
   tm_polygons(col = "darkred")
@@ -148,11 +148,10 @@ tm_shape(joined_geo_leases) +
 #switch to interactive mode to produce leaflet map result
 tmap_mode("view")
 
-lease_ranges_map_interactive <- tm_basemap(leaflet::providers$Stamen.Toner) +
+lease_ranges_map_interactive <- tm_basemap(leaflet::providers$CartoDB.Voyager) +
   tm_shape(joined_geo_leases) +
-  tm_polygons(col = "darkred", alpha = .6) +
+  tm_polygons(col = "darkred", alpha = .5) +
   tm_tiles("Stamen.TonerLines") 
-
 
 
 lease_ranges_map_interactive
