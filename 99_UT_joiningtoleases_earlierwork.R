@@ -1,3 +1,9 @@
+# The database of the oil and gas leases can be found here:  
+#   https://nflss.blm.gov/eoi/list  
+# Direct csv download here:
+#   https://nflss.blm.gov/api/v1/selectedeoi/csv/UT/2020/ALL/0/ALL?$skip=0
+
+
 library(tidyverse)
 library(lubridate)
 library(janitor)
@@ -27,8 +33,14 @@ glimpse(firstdivisions)
 
 
 ### Now import the oil/gas lease data of proposed parcels ####
-lands_nominated_raw <- read_csv("lease_data/Lands_Nominated_Export_04_09_2020.csv")
+lands_nominated_raw <- read_csv("https://nflss.blm.gov/api/v1/selectedeoi/csv/UT/2020/ALL/0/ALL?$skip=0") %>% 
+                            mutate(data_pulled_at = Sys.time()) #add timestamp for when data is pulled
 
+#archive a copy in case needed 
+# filestring <- paste0("lease_data/lands_nominated_raw_archived_", Sys.Date(), ".csv")
+# write_csv(lands_nominated_raw, filestring)
+
+#clean up names and format date column
 lands_nominated <- lands_nominated_raw %>% 
   clean_names() %>% 
   mutate(
@@ -41,7 +53,6 @@ glimpse(lands_nominated)
 #the challenge here is trying to match this up to the geo table columns
 lands_nominated %>% 
   select(ld_summary)
-
 
 #let's parse the ld summary column into parts ####
 
@@ -69,7 +80,6 @@ lands_nominated <- lands_nominated %>%
     ld_range = str_sub(ld_summary, 12L, 16L),
     ld_section = str_sub(ld_summary, 41L, 43L)
   ) 
-
 
 
 #do something similar now for the geodata file ####
