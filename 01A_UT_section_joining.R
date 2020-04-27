@@ -74,15 +74,14 @@ lands_nominated <- lands_nominated %>%
 #extract the section number to use as the second joining criteria to natch geo data fields
 lands_nominated <- lands_nominated %>% 
   mutate(
-    ld_section = str_sub(ld_summary, 41L, 43L),
-    FRSTDIVNO = as.numeric(ld_section),
-    FRSTDIVNO = as.character(FRSTDIVNO)
+    ld_section = str_sub(ld_summary, 42L, 43L),
+    FRSTDIVNO = ld_section
   )
 
 #create a single matchstring to use as a unique ID for the join
 lands_nominated <- lands_nominated %>% 
   mutate(
-    matchstring = str_trim(paste0(PLSSID, FRSTDIVNO))
+    matchstring = str_squish(paste0(PLSSID, FRSTDIVNO))
   )
 
 #reorder columns
@@ -101,24 +100,24 @@ lands_nominated %>%
 #appears to be due to subdivisions being different, which we're not looking at this time...so will roll up to a distinct section.
 #note: this means two subdivisions within a section may have different companies/statuses associated with them
 #will also remove any records where the status is listed clearly as "Duplicate"
-lands_nominated <- lands_nominated %>% 
+lands_nominated_distinct <- lands_nominated %>% 
   filter(status != "Duplicate") %>% 
   distinct(matchstring, .keep_all = TRUE)
 
 #confirm no more duplicate matchstrings
-lands_nominated %>% 
+lands_nominated_distinct %>% 
   count(matchstring, sort = TRUE) %>% 
   filter(n > 1)
 
 # ok now we should be ready to join
-lands_nominated
+lands_nominated_distinct
 
 
 
 # create a matchstring field in the geo data based on the same variables
 firstdivisions_geo <- firstdivisions_geo %>% 
   mutate(
-    matchstring = str_trim(paste0(PLSSID, FRSTDIVNO))
+    matchstring = str_squish(paste0(PLSSID, FRSTDIVNO))
   )
 
 #there are also some non-section records in there for non-surveyed block groups, let's take those out to avoid potential duplicate matches
@@ -133,7 +132,7 @@ firstdivisions_geo %>%
     matchstring, PLSSID, FRSTDIVNO
   )
 
-lands_nominated %>% 
+lands_nominated_distinct %>% 
   select(
     matchstring, PLSSID, FRSTDIVNO
   )
@@ -143,8 +142,26 @@ lands_nominated %>%
 
 #### JOINING ####
 
-#the moment of truth, let's see if things can join successfully or not
-joined_sections_geo <- geo_join(firstdivisions_geo, lands_nominated, "matchstring", "matchstring")
+#before doing the geo_join, we'll do a regular join just to see if anything falls out and doesn't match
+inner_join(lands_nominated_distinct, firstdivisions_geo, by = "matchstring")
+
+anti_join(lands_nominated_distinct, firstdivisions_geo, by = "matchstring") %>% 
+  View()
+
+#looks like four records falling out -- **will investigate to find out why
+
+lands_nominated_distinct %>% 
+  filter(PLSSID == "UT260250S0170E0")
+
+firstdivisions_geo %>% 
+  filter(PLSSID == "UT260250S0170E0") 
+
+
+
+#geojoin
+
+#the moment of truth, let's see if things can join successfully or not geospatially
+joined_sections_geo <- geo_join(firstdivisions_geo, lands_nominated_distinct, "matchstring", "matchstring")
 
 #yay! it worked.
 head(joined_sections_geo)
