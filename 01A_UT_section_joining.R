@@ -167,6 +167,8 @@ joined_sections_geo %>%
 joined_sections_geo_hasleasedata <- joined_sections_geo %>% 
   filter(has_lease_data == "Y")
 
+#save object
+saveRDS(joined_sections_geo_hasleasedata, "processed_data/joined_sections_geo_hasleasedata.rds")
 
 
 ### MAPPING #####
