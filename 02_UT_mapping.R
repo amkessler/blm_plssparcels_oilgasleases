@@ -3,28 +3,31 @@ library(sf)
 library(tmap)
 library(tmaptools)
 
-#load saved files of UT-only geospatial data created in step 00
+#load saved file of UT lease sections created in step 00
 
-#townships 
-ut_townships_geo <- readRDS("geo_data/ut_townships_geo.rds")
-
-#first divisions (sections)
-ut_firstdivisions_geo <- readRDS("geo_data/ut_firstdivisions_geo.rds")
-
-#state boundary
-ut_stateboundary <- readRDS("geo_data/ut_stateboundary_geo.rds")
+joined_sections_geo_hasleasedata <- readRDS("processed_data/joined_sections_geo_hasleasedata.rds")
 
 
+#create map using tmap
+#start with static map
+# tmap_mode("plot")
+tm_shape(joined_sections_geo_hasleasedata) +
+  tm_polygons(col = "darkred")
 
-#using tmap
+#switch to interactive mode to produce leaflet map result
+tmap_mode("view")
 
-#map out Utah townships
-tm_shape(ut_townships_geo) +
-  tm_polygons()
+lease_ranges_map_interactive <- tm_basemap(leaflet::providers$CartoDB.Voyager) +
+  tm_shape(joined_sections_geo_hasleasedata) +
+  tm_polygons(col = "darkred", alpha = .5) +
+  tm_tiles("Stamen.TonerLines") 
 
-#map out just a portion of sections 
-ut_section_13 <- ut_firstdivisions_geo %>% 
-  filter(FRSTDIVNO == 13)
+lease_ranges_map_interactive
 
-tm_shape(ut_section_13) +
-  tm_polygons()
+#an attempt to see what happens with coloring by status -- WARNING: because of potential multiple subdivisions this shouldn't be used for publication work, but rather
+#just to see if certain patterns emerge that we could then analyze with the full data behind them and determine which parcels had multiple subs included and their statuses
+tm_basemap(leaflet::providers$CartoDB.Voyager) +
+  tm_shape(joined_sections_geo_hasleasedata) +
+  tm_polygons("status", alpha = .5) +
+  tm_tiles("Stamen.TonerLines") 
+
