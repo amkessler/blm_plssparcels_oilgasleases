@@ -60,84 +60,39 @@ lands_nominated <- lands_nominated %>%
     ld_summary = str_remove_all(ld_summary, "\\.")
   )
 
-#parse TOWNSHIP AND RANGE based on the location within the string ####
-lands_nominated %>% 
-  select(ld_summary)
 
+#parse to create an equivalent of PLSSID to match against
 lands_nominated <- lands_nominated %>% 
   mutate(
     ld_township = str_sub(ld_summary, 5L, 9L), 
-    ld_range = str_sub(ld_summary, 12L, 16L)
+    ld_range = str_sub(ld_summary, 12L, 16L),
+    PLSSID = paste0("UT26", ld_township, ld_range, "0")
   ) 
 
 
-
-#do the same for geodata ####
-
-glimpse(ranges_geo)
-
-#let's look at the string lengths
-str_length(ranges_geo$PLSSID)
-
-#good, they're all identical in their length
-#let's parse in a similar way 
-ranges_geo <- ranges_geo %>% 
-  mutate(
-    ID_township = str_sub(PLSSID, 5L, 9L), 
-    ID_range = str_sub(PLSSID, 10L, 14L)
-  ) 
+#reorder columns
+lands_nominated <- lands_nominated %>% 
+  select(PLSSID, everything())
 
 
-#let's visually inspect the two tables' new columns
-ranges_geo %>% 
-  select(
-    PLSSID, ID_township, ID_range
-  )
+lands_nominated_distinctranges <- lands_nominated %>% 
+  filter(status != "Duplicate") %>% 
+  distinct(PLSSID, .keep_all = TRUE)
 
-lands_nominated %>% 
-  select(
-    ld_summary, ld_township, ld_range
-  ) 
+#confirm no more duplicate matchstrings
+lands_nominated_distinctranges %>% 
+  count(PLSSID, sort = TRUE) %>% 
+  filter(n > 1)
+
+# ok now we should be ready to join
+lands_nominated_distinctranges
+
 
 
 #### JOINING ####
 
-#create a unified field for township and range combo to use as unique id for joining
-lands_nominated <- lands_nominated %>% 
-  mutate(
-    matchfield_range = paste0(ld_township, ld_range),
-    matchfield_range = str_squish(matchfield_range)
-  ) %>% 
-  select(
-    matchfield_range, everything()
-  )
+joined_geo_all <- geo_join(ranges_geo, lands_nominated_distinctranges, "PLSSID", "PLSSID")
 
-lands_nominated
-
-
-ranges_geo <- ranges_geo %>% 
-  mutate(
-    matchfield_range = paste0(ID_township, ID_range),
-    matchfield_range = str_squish(matchfield_range)
-  ) %>% 
-  select(
-    matchfield_range, everything()
-  )
-
-ranges_geo
-
-
-# Let's try to ferret out multiple matchfield records so we've got one distinct record per range itself. 
-# For mapping things, this should work.
-lands_nominated_distinct <- lands_nominated %>% 
-  filter(status != "Duplicate") %>% 
-  distinct(matchfield_range, .keep_all = TRUE)
-
-ranges_geo_distinct <- ranges_geo %>% 
-  distinct(matchfield_range, .keep_all = TRUE)
-
-## now let's join
-joined_geo_all <- geo_join(ranges_geo_distinct, lands_nominated_distinct, "matchfield_range", "matchfield_range")
 
 # filter just ones with leases
 joined_geo_leases <- joined_geo_all %>% 
@@ -147,7 +102,6 @@ joined_geo_leases <- joined_geo_all %>%
 #create map using tmap
 #start with static map
 # tmap_mode("plot")
-
 tm_shape(joined_geo_leases) +
   tm_polygons(col = "darkred")
 
