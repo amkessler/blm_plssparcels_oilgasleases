@@ -148,14 +148,37 @@ inner_join(lands_nominated_distinct, firstdivisions_geo, by = "matchstring")
 anti_join(lands_nominated_distinct, firstdivisions_geo, by = "matchstring") %>% 
   View()
 
-#looks like four records falling out -- **will investigate to find out why
+anti_join(lands_nominated_distinct, firstdivisions_geo, by = "matchstring") %>% 
+  write_csv("output/notjoined_landsnominated.csv")
 
+
+
+#looks like four records falling out -- **will investigate to find out why
 lands_nominated_distinct %>% 
   filter(PLSSID == "UT260250S0170E0")
 
 firstdivisions_geo %>% 
-  filter(PLSSID == "UT260250S0170E0") 
+  filter(PLSSID == "UT260250S0170E0") %>% 
+  View()
 
+
+firstdivisions_geo %>% 
+  filter(PLSSID == "UT260250S0170E0")  %>% 
+  count(PLSSID, FRSTDIVNO) %>% 
+  arrange(FRSTDIVNO)
+#ah ha-- there's no section 01, 02 or 04 in the geo file itself able to match up against the lands nominated
+#wonder why that is?
+#explains three of the four so far that didn't join
+
+#let's look at the last one
+lands_nominated_distinct %>% 
+  filter(PLSSID == "UT260250S1750E0")
+
+firstdivisions_geo %>% 
+  filter(PLSSID == "UT260250S1750E0")
+
+#ha, that plssid doesn't exist at all in the geo file. Could it have been a typo, possibly meant to be the same as the other three?
+#if so, bad data entry overall might explain why all four of these are not there, if they were entered incorrectly in the oil lease data
 
 
 #geojoin
@@ -199,12 +222,10 @@ tm_shape(joined_sections_geo_hasleasedata) +
 #switch to interactive mode to produce leaflet map result
 tmap_mode("view")
 
-lease_ranges_map_interactive <- tm_basemap(leaflet::providers$CartoDB.Voyager) +
+tm_basemap(leaflet::providers$CartoDB.Voyager) +
   tm_shape(joined_sections_geo_hasleasedata) +
   tm_polygons(col = "darkred", alpha = .5) +
   tm_tiles("Stamen.TonerLines") 
-
-lease_ranges_map_interactive
 
 #an attempt to see what happens with coloring by status -- WARNING: because of potential multiple subdivisions this shouldn't be used for publication work, but rather
 #just to see if certain patterns emerge that we could then analyze with the full data behind them and determine which parcels had multiple subs included and their statuses
