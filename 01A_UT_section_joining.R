@@ -20,23 +20,54 @@ firstdivisions_geo <- readRDS("geo_data/ut_firstdivisions_geo.rds")
 glimpse(firstdivisions_geo)
 
 
-
 ### Now import the oil/gas lease data of proposed parcels ####
 lands_nominated_raw <- read_csv("https://nflss.blm.gov/api/v1/selectedeoi/csv/UT/2020/ALL/0/ALL?$skip=0") %>% 
                             mutate(data_pulled_at = Sys.time()) #add timestamp for when data is pulled
 
 #archive a copy in case needed 
-# filestring <- paste0("lease_data/lands_nominated_raw_archived_", Sys.Date(), ".csv")
-# write_csv(lands_nominated_raw, filestring)
+filestring <- paste0("lease_data/lands_nominated_raw_archived_", Sys.Date(), ".csv")
+write_csv(lands_nominated_raw, filestring)
 
 #clean up names and format date column
 lands_nominated <- lands_nominated_raw %>% 
   clean_names() %>% 
   mutate(
-    submitted_date = mdy(submitted_date)
+    submitted_date = mdy(submitted_date),
+    submitted_month = month(submitted_date),
+    submitted_year = year(submitted_date) #they're all currently 2020 but capturing this anyway
   )
 
 glimpse(lands_nominated)
+
+#counting how many records of each status category
+lands_nominated %>% 
+  count(status, sort = TRUE)
+
+#by month
+lands_nominated %>% 
+  count(submitted_month, status) %>% 
+  arrange(submitted_month, desc(n))
+
+
+# Any ld_summary listings more than once (b/c of subdivisions)
+lands_nominated %>% 
+  count(ld_summary, sort = TRUE)
+
+lands_nominated %>% 
+  filter(ld_summary == "UT T0260S-R0230E SALT LAKE MER Section: 021")
+
+#duplicate subdivisions?
+lands_nominated %>% 
+  count(ld_summary, subdivision, sort = TRUE)
+
+#less than a handful. they're either listed wtih status duplicate or withdrawn.
+lands_nominated %>% 
+  filter(ld_summary == "UT T0270S-R0200E SALT LAKE MER Section: 004")
+
+
+
+
+#### PARSING ####
 
 #the ld_summary column is the one with the township/range numbers
 #the challenge here is trying to match this up to the geo table columns
@@ -53,11 +84,15 @@ lands_nominated %>%
   select(ld_summary) %>% 
   tail(1)
 
-#let's take that out
+#a very unusual rangle that include a period, Range 17.5
+#let's take that out for now, and then put it back in separately at the end of the process.
+lands_outliertoaddlater <- lands_nominated %>% 
+  filter(ld_summary == "UT T0250S-R17.50E SALT LAKE MER Section: 001")
+
 lands_nominated <- lands_nominated %>% 
-  mutate(
-    ld_summary = str_remove_all(ld_summary, "\\.")
-  )
+  filter(ld_summary != "UT T0250S-R17.50E SALT LAKE MER Section: 001")
+
+
 
 #parsing to create the PSSLID equivalent for **Utah** parcels from within the string
 #PLSSID format taken from BLM docs referenced in the readme  
@@ -84,6 +119,18 @@ lands_nominated <- lands_nominated %>%
     matchstring = str_squish(paste0(PLSSID, FRSTDIVNO))
   )
 
+
+#now we'll put that one **outlier** record with the 17.5 back in manually here
+lands_outliertoaddlater
+
+# *** STILL WORK IN PROGRESS HERE ####
+
+# 
+# 
+# #add it back to main table
+# temp <- bind_rows(lands_nominated, lands_outliertoaddlater)
+# lands_nominated <- temp
+
 #reorder columns
 lands_nominated <- lands_nominated %>% 
   select(matchstring, PLSSID, FRSTDIVNO, everything())
@@ -95,7 +142,7 @@ lands_nominated %>%
   filter(n > 1)
 
 lands_nominated %>% 
-  filter(matchstring == "UT260270S0200E04")
+  filter(matchstring == "UT260270S0200E004")
 
 #appears to be due to subdivisions being different, which we're not looking at this time...so will roll up to a distinct section.
 #note: this means two subdivisions within a section may have different companies/statuses associated with them
@@ -152,15 +199,12 @@ anti_join(lands_nominated_distinct, firstdivisions_geo, by = "matchstring") %>%
   write_csv("output/notjoined_landsnominated.csv")
 
 
-
 #looks like four records falling out -- **will investigate to find out why
 lands_nominated_distinct %>% 
   filter(PLSSID == "UT260250S0170E0")
 
 firstdivisions_geo %>% 
-  filter(PLSSID == "UT260250S0170E0") %>% 
-  View()
-
+  filter(PLSSID == "UT260250S0170E0") 
 
 firstdivisions_geo %>% 
   filter(PLSSID == "UT260250S0170E0")  %>% 
@@ -180,8 +224,73 @@ firstdivisions_geo %>%
 #ha, that plssid doesn't exist at all in the geo file. Could it have been a typo, possibly meant to be the same as the other three?
 #if so, bad data entry overall might explain why all four of these are not there, if they were entered incorrectly in the oil lease data
 
+#going to reload the enormous national geodatabe file for sections from step 00. See whether there
+#is any possibility those records may have gotten filtering out in the Utah isolation?
 
-#geojoin
+# temp_missingcheck <- firstdivisions %>% 
+#   filter(PLSSID %in% c("UT260250S0170E0", "UT260250S1750E0"))
+
+#save to avoid having to repeat this again
+# saveRDS(temp_missingcheck, "geo_data/temp_missingcheck.rds")
+
+#to start here instead load the temp file saved above
+temp_missingcheck <- readRDS("geo_data/temp_missingcheck.rds")
+
+#are there two?
+temp_missingcheck %>% 
+  count(PLSSID)
+
+#there aren't. So now we know the solo missing one with no plssid in our ut data doesn't exist at all in the national file.
+
+#and what about the low numbered sections in our one remaining plssid?
+temp_missingcheck %>% 
+  arrange(FRSTDIVNO)
+
+#nope, they don't exist either. 
+
+#one additional step, let's see what companies are active in the plssid we do have in the nominations data
+lands_nominated %>% 
+  filter(PLSSID == "UT260250S0170E0") %>% 
+  count(nominator)
+
+#they're all from the same company, Prairie Hills Oil and Gas. 
+#What else does that company have associated with it - any other sections with same numbers in other ranges?
+lands_nominated %>% 
+  filter(str_detect(nominator, "Prairie Hills")) %>% 
+  count(nominator, PLSSID, FRSTDIVNO) %>% 
+  filter(FRSTDIVNO %in% c("01", "02", "04"))
+
+#could this get us closer to sorting out?
+
+
+#another question -- does each range have a section 01? Do some just not have one in the first place...
+#will use the UT data to see
+#slice a temporary table out without the shape data to avoid it taking a LONG time to run a count.
+temp_forcount <- firstdivisions_geo 
+st_geometry(temp_forcount) <- NULL
+
+temp_count <- temp_forcount %>% 
+  count(PLSSID, FRSTDIVNO) %>% 
+  arrange(PLSSID, FRSTDIVNO)
+
+num_plss <- temp_count %>% 
+  count(PLSSID) %>% 
+  nrow()
+
+num_01sections <- temp_count %>% 
+  filter(FRSTDIVNO == "01") %>% 
+  count(PLSSID) %>% 
+  nrow()
+
+num_plss - num_01sections
+
+#ok then...so there are indeed a few hundred ranges that simply don't have section 01.
+#that would appear to be even more evidence that the problem here is with the nominations data itself, not the geodata.
+
+#we'll table this for now, and proceed with the geo_joining without those four, while the investigation into that continues.
+
+
+#geojoin #### -----------------------
 
 #the moment of truth, let's see if things can join successfully or not geospatially
 joined_sections_geo <- geo_join(firstdivisions_geo, lands_nominated_distinct, "matchstring", "matchstring")
@@ -234,3 +343,21 @@ tm_basemap(leaflet::providers$CartoDB.Voyager) +
   tm_polygons("status", alpha = .5) +
   tm_tiles("Stamen.TonerLines") 
 
+
+
+#what if we map the section with the missing 01, 02, etc... see if visually there's something missing or not?
+tm_basemap(leaflet::providers$CartoDB.Voyager) +
+  tm_shape(temp_missingcheck) +
+  tm_polygons(col = "darkred", alpha = .7) +
+  tm_tiles("Stamen.TonerLines") 
+
+
+#map out the just the recent one from Apr 24
+# UT260200S0230E009
+newonly <- joined_sections_geo_hasleasedata %>% 
+  filter(matchstring == "UT260200S0230E009")
+
+tm_basemap(leaflet::providers$CartoDB.Voyager) +
+  tm_shape(newonly) +
+  tm_polygons(col = "darkred", alpha = .7) +
+  tm_tiles("Stamen.TonerLines") 
