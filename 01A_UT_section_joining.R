@@ -92,6 +92,9 @@ lands_outliertoaddlater <- lands_nominated %>%
 lands_nominated <- lands_nominated %>% 
   filter(ld_summary != "UT T0250S-R17.50E SALT LAKE MER Section: 001")
 
+#seeing if there's an id in the geo file that might be the one supposed to match this...
+temp_geocheck <- firstdivisions_geo %>% 
+  filter(str_sub(PLSSID, 1L, 12L) == "UT260250S017") 
 
 
 #parsing to create the PSSLID equivalent for **Utah** parcels from within the string
@@ -357,7 +360,8 @@ tm_basemap(leaflet::providers$CartoDB.Voyager) +
 newonly <- joined_sections_geo_hasleasedata %>% 
   filter(matchstring == "UT260200S0230E009")
 
+#potential areas for the mystery 17.5 range?
 tm_basemap(leaflet::providers$CartoDB.Voyager) +
-  tm_shape(newonly) +
+  tm_shape(temp_geocheck) +
   tm_polygons(col = "darkred", alpha = .7) +
   tm_tiles("Stamen.TonerLines") 
