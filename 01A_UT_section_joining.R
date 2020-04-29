@@ -293,6 +293,9 @@ num_plss - num_01sections
 #we'll table this for now, and proceed with the geo_joining without those four, while the investigation into that continues.
 
 
+
+
+
 #geojoin #### -----------------------
 
 #the moment of truth, let's see if things can join successfully or not geospatially
@@ -321,6 +324,11 @@ joined_sections_geo_hasleasedata <- joined_sections_geo %>%
 
 #save object
 saveRDS(joined_sections_geo_hasleasedata, "processed_data/joined_sections_geo_hasleasedata.rds")
+
+
+
+
+
 
 
 ### MAPPING #####
@@ -360,8 +368,45 @@ tm_basemap(leaflet::providers$CartoDB.Voyager) +
 newonly <- joined_sections_geo_hasleasedata %>% 
   filter(matchstring == "UT260200S0230E009")
 
+
+
+
+
+#### MORE SEARCHING FOR MYSTERY 17.5 RANGE ####
+
 #potential areas for the mystery 17.5 range?
 tm_basemap(leaflet::providers$CartoDB.Voyager) +
   tm_shape(temp_geocheck) +
   tm_polygons(col = "darkred", alpha = .7) +
   tm_tiles("Stamen.TonerLines") 
+
+
+
+#looking for Prairie Hills parcels only
+phills_distinct <- lands_nominated %>% 
+  filter(str_detect(nominator, "Prairie Hills"),
+         status != "Duplicate") %>% 
+  distinct(matchstring, .keep_all = TRUE)
+
+#geo join
+phills_geo <- geo_join(firstdivisions_geo, phills_distinct, "matchstring", "matchstring")
+phills_geo <- phills_geo %>% 
+  filter(!is.na(nominator))
+
+# map prairie hills parcels
+tm_basemap(leaflet::providers$CartoDB.Voyager) +
+  tm_shape(phills_geo) +
+  tm_polygons(col = "green", alpha = .7) +
+  tm_tiles("Stamen.TonerLines") 
+
+
+#both together
+tm_basemap(leaflet::providers$CartoDB.Voyager) +
+  tm_shape(temp_geocheck) +
+  tm_polygons(col = "darkred", alpha = .7) +
+  tm_shape(phills_geo) +
+  tm_polygons(col = "green", alpha = .7) 
+  
+#This may be the plssid of the mystery range?
+# UT260250S0172E0
+
