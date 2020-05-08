@@ -8,9 +8,7 @@ library(lubridate)
 library(janitor)
 library(sf)
 library(tigris)
-library(tmap)
-library(tmaptools)
-library(ggmap)
+
 
 #load saved files of UT-only geospatial data created in step 00
 
