@@ -31,16 +31,18 @@ tm_basemap(leaflet::providers$CartoDB.Voyager) +
 
 #let's try a different basemap 
 tm_basemap(leaflet::providers$Esri.WorldTopoMap) +
-  tm_shape(joined_sections_geo_hasleasedata) +
+  tm_shape(joined_sections_geo_hasleasedata, unit = "miles") +
   tm_polygons(col = "darkred", alpha = .4) +
-  tm_tiles("Stamen.TonerLines") 
+  tm_tiles("Stamen.TonerLines") +
+  tm_scale_bar() 
 
 #yeah, that's a nice one for our purposes - let's stick with that basemap for now
 #save as an named object
 utah_lease_map <- tm_basemap(leaflet::providers$Esri.WorldTopoMap) +
-  tm_shape(joined_sections_geo_hasleasedata) +
+  tm_shape(joined_sections_geo_hasleasedata, unit = "miles") +
   tm_polygons(col = "darkred", alpha = .4) +
-  tm_tiles("Stamen.TonerLines") 
+  tm_tiles("Stamen.TonerLines") +
+  tm_scale_bar() 
 
 utah_lease_map
 
