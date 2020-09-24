@@ -42,6 +42,10 @@ glimpse(lands_nominated)
 lands_nominated %>% 
   count(status, sort = TRUE)
 
+#counting how many records per month
+lands_nominated %>% 
+  count(submitted_month)
+
 #we'll filter for only pending or leased parcels
 lands_nominated <- lands_nominated %>% 
   filter(status == "Pending")
