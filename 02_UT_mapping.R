@@ -2,6 +2,8 @@ library(tidyverse)
 library(sf)
 library(tmap)
 library(tmaptools)
+library(maptools)
+library(rgdal)
 library(ggmap)
 
 
@@ -90,7 +92,7 @@ ggmap(map)
 
 
 
-### combine both ggmap and ggplot
+
 
 
 
