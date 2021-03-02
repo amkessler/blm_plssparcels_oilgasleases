@@ -15,3 +15,6 @@ lease_parcels_wgs84roj <- joined_sections_geo_hasleasedata %>%
 #export to kml
 st_write(lease_parcels_wgs84roj, "geo_data/lease_parcels_wgs84roj.kml", driver = "kml")
 
+
+#export to a shapefile as well in case needed
+st_write(lease_parcels_wgs84roj, dsn = "geo_data/leaseparcels.shp", layer = "parcels.shp", driver = "ESRI Shapefile")
